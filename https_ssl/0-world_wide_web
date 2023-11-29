@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#Displaying info about information about subdomains.
+
+domaindis_info() {
+    local subdomain="$1"
+    local domain="$2"
+    local record_type
+    record_type=$(dig +short -t ANY "$subdomain.$domain" | awk 'NR==1 {print $4}')
+#if dig fails exit
+    if [ -z "$record_type" ]; then
+        echo "Error: Unable to retrieve information for $subdomain.$domain."
+        exit 1
+    fi
+    
+    local destination
+    destination=$(dig +short "$subdomain.$domain")
+    echo "The subdomain $subdomain is a $record_type record and points to $destination"
+}
+#mainscript
+
+#confirms doain provision
+if [ -z "$1" ]; then
+    echo "Usage: $0 <domain>"
+    exit 1
+fi
+
+domain="$1"
+subdomains=("www" "lb-01" "web-01" "web-02")
+
+# Loop through subdomains and display information
+for sub in "${subdomains[@]}"; do
+    domaindis_info "$sub" "$domain"
+done
