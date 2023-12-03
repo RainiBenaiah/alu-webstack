@@ -1,18 +1,28 @@
 #!/usr/bin/env bash
 # Script: 0-world_wide_web
 # Description: Display information about subdomains of a given domain
-domain_information () {
-    line=$(dig "$2"."$1" | grep -A1 'ANSWER SECTION:' | tr '\t' '\n' | tail -2 | tr '\n' ' ')
-    echo "$2 $line" | awk '{print "The subdomain " $1 " is a " $2 " record and points to " $3}'
+print_domain_record() {
+    local full_subdomain="$2.$1"
+    local record_and_ips=$(dig +short "$full_subdomain")
+
+    if [ -n "$record_and_ips" ]; then
+        local record_type=$(dig "$full_subdomain" | awk '/ANSWER SECTION:/ {getline; print $1}')
+        echo "The subdomain $2 is a $record_type record and points to:"
+        
+        # Iterate over each IP address
+        while IFS= read -r ip; do
+            echo "  - $ip"
+        done <<< "$record_and_ips"
+    else
+        echo "Error: Unable to retrieve DNS information for $full_subdomain"
+    fi
 }
 
-if [ "$#" == 1 ]
-then
-  domain_information "$1" "www"
-  domain_information "$1" "lb-01"
-  domain_information "$1" "web-01"
-  domain_information "$1" "web-02"
-elif [ "$#" == 2 ]
-then
-  domain_information "$1" "$2"
+if [ "$#" == 1 ]; then
+    domain="$1"
+    for sub in "www" "lb-01" "web-01" "web-02"; do
+        print_domain_record "$domain" "$sub"
+    done
+else
+    echo "Usage: $0 <domain>"
 fi
