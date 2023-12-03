@@ -1,28 +1,30 @@
 #!/usr/bin/env bash
-# Script: 0-world_wide_web
-# Description: Display information about subdomains of a given domain
-print_domain_record() {
-    local full_subdomain="$2.$1"
-    local record_and_ips=$(dig +short "$full_subdomain")
+# Function to display subdomain information
 
-    if [ -n "$record_and_ips" ]; then
-        local record_type=$(dig "$full_subdomain" | awk '/ANSWER SECTION:/ {getline; print $1}')
-        echo "The subdomain $2 is a $record_type record and points to:"
-        
-        # Iterate over each IP address
-        while IFS= read -r ip; do
-            echo "  - $ip"
-        done <<< "$record_and_ips"
+get_subdomain_info() {
+    domain="$1"
+    subdomain="$2"
+    if [ -z "$subdomain" ]; then
+        subdomain_list=("www" "lb-01" "web-01" "web-02")
     else
-        echo "Error: Unable to retrieve DNS information for $full_subdomain"
+        subdomain_list=("$subdomain")
     fi
+
+    for sub in "${subdomain_list[@]}"; do
+        record_type=$(dig +short -t A "$sub.$domain" | awk '{ if (NF) { print "A" } else { print "CNAME" } }')
+        destination=$(dig +short "$sub.$domain" | tr '\n' ',' | sed 's/,$//')
+        echo "The subdomain $sub is a $record_type record and points to $destination"
+    done
 }
 
-if [ "$#" == 1 ]; then
+# Check if both domain and subdomain arguments are provided
+if [ $# -eq 2 ]; then
     domain="$1"
-    for sub in "www" "lb-01" "web-01" "web-02"; do
-        print_domain_record "$domain" "$sub"
-    done
+    subdomain="$2"
+    get_subdomain_info "$domain" "$subdomain"
+elif [ $# -eq 1 ]; then
+    domain="$1"
+    get_subdomain_info "$domain"
 else
-    echo "Usage: $0 <domain>"
+    echo "Usage: $0 <domain> [<subdomain>]"
 fi
